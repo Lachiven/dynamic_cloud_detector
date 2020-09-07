@@ -3,7 +3,7 @@
 DynamicCloudDetector::DynamicCloudDetector(void)
 :local_nh("~")
 , listener(tf_buffer)
-, obstacles_cloud_sub(nh, "/velodyne_obstacles", 10), odom_sub(nh, "/odom/complement", 10)
+, obstacles_cloud_sub(nh, "/velodyne_obstacles", 10), odom_sub(nh, "/odom/complement", 10)//
 , sync(sync_subs(10), obstacles_cloud_sub, odom_sub)
 {
     local_nh.param("RESOLUTION", RESOLUTION, {0.2});
@@ -45,11 +45,13 @@ void DynamicCloudDetector::callback(const sensor_msgs::PointCloud2ConstPtr& msg_
     std::cout << "received cloud size: " << cloud_ptr->points.size() << std::endl;
 
     // transform pointcloud to base frame
-    std::string sensor_frame_id = remove_first_slash(msg_obstacles_cloud->header.frame_id);
+    std::string sensor_frame_id = remove_first_slash(msg_obstacles_cloud->header.frame_id);//parent是原坐标系，child是变换后的坐标系
     std::string base_frame_id = remove_first_slash(msg_odom->child_frame_id);
     try{
         geometry_msgs::TransformStamped transform;
         transform = tf_buffer.lookupTransform(base_frame_id, sensor_frame_id, ros::Time(0));
+        //从child到parent的坐标变换等于从parent到child的frame transform，等于child在parent frame的姿态描述
+        //得到"/turtle1"到"/turtle2"的transfrom, 使用ros::Time(0)可以返回最新的'turtle1'到'turtle2'的变换
         Eigen::Matrix4d mat = tf2::transformToEigen(transform.transform).matrix().cast<double>();
         pcl::transformPointCloud(*cloud_ptr, *cloud_ptr, mat);
         cloud_ptr->header.frame_id = base_frame_id;
